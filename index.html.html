@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<title>Qual é o seu nível com IA?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* ─── SUPPRESS ERRORS ──────────────────────────────────────── */
+/* handled in JS */
+
+/* ─── RESET ────────────────────────────────────────────────── */
+*, *::before, *::after {
+  margin: 0; padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ─── TOKENS ───────────────────────────────────────────────── */
+:root {
+  --bg:   #07071A;
+  --bg2:  #0F0F28;
+  --bg3:  #181838;
+  --bdr:  rgba(255,255,255,0.07);
+  --w:    #FFFFFF;
+  --off:  #E8E8F0;
+  --mut:  #6B6B8A;
+  --cy:   #00D4FF;
+  --n0:   #FF4455;
+  --n1:   #FFD166;
+  --n2:   #00E5A0;
+  --n3:   #00D4FF;
+
+  /* Safe height fallback chain */
+  --app-h: 100vh;
+}
+
+html {
+  height: 100%;
+  height: -webkit-fill-available;
+}
+
+body {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  background: var(--bg);
+  color: var(--w);
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── NEURAL CANVAS ─────────────────────────────────────────── */
+#cnv {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .7;
+}
+
+/* ─── APP SHELL ──────────────────────────────────────────────── */
+#app {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  height: 100vh;
+  height: -webkit-fill-available;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── TOP BAR ────────────────────────────────────────────────── */
+#top-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 0;
+  gap: 12px;
+}
+
+.brand {
+  display: flex; align-items: center; gap: 9px;
+}
+.brand-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cy);
+  box-shadow: 0 0 10px var(--cy);
+  flex-shrink: 0;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%,100% { box-shadow: 0 0 8px var(--cy); }
+  50%      { box-shadow: 0 0 18px var(--cy), 0 0 30px rgba(0,212,255,.3); }
+}
+.brand-txt {
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--mut); text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Mute — lives inside top-bar, never overlaps content */
+#mute-btn {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--bdr);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--mut);
+  transition: color .2s, border-color .2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+#mute-btn:active { transform: scale(.9); }
+#mute-btn.muted  { color: var(--n0); }
+
+/* ─── SCROLLABLE CONTENT ─────────────────────────────────────── */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: 0 20px 32px;
+}
+#content::-webkit-scrollbar { display: none; }
+
+/* ─── SCREENS ────────────────────────────────────────────────── */
+.screen { display: none; }
+.screen.active {
+  display: block;
+  animation: fadeUp .4s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ─── WELCOME ────────────────────────────────────────────────── */
+#screen-welcome { padding-top: 36px; }
+
+.welcome-h {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(30px, 8.5vw, 44px);
+  font-weight: 800;
+  line-height: 1.08;
+  margin-bottom: 14px;
+}
+.welcome-h .cy { color: var(--cy); }
+
+.welcome-sub {
+  font-size: 14px; color: var(--mut);
+  line-height: 1.65; margin-bottom: 36px;
+}
+
+.input-lbl {
+  font-size: 9px; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--mut);
+  margin-bottom: 9px; display: block;
+}
+.name-input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1.5px solid var(--bdr);
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px; color: var(--w);
+  outline: none;
+  transition: border-color .25s, box-shadow .25s;
+  margin-bottom: 24px;
+  -webkit-appearance: none;
+}
+.name-input:focus {
+  border-color: var(--cy);
+  box-shadow: 0 0 0 3px rgba(0,212,255,.1);
+}
+.name-input::placeholder { color: var(--mut); }
+
+.start-btn {
+  width: 100%;
+  background: var(--cy); color: var(--bg);
+  border: none; border-radius: 14px;
+  padding: 18px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(0,212,255,.22);
+  transition: opacity .2s, transform .1s, box-shadow .2s;
+  -webkit-appearance: none;
+}
+.start-btn:not(:disabled):active { transform: scale(.98); }
+.start-btn:disabled { opacity: .28; cursor: not-allowed; box-shadow: none; }
+
+.pills {
+  display: flex; gap: 10px; margin-top: 24px;
+}
+.pill {
+  background: var(--bg3); border: 1px solid var(--bdr);
+  border-radius: 10px; padding: 10px 10px;
+  font-size: 11px; color: var(--mut);
+  flex: 1; text-align: center;
+}
+.pill strong {
+  display: block; color: var(--w);
+  font-family: 'Syne', sans-serif;
+  font-size: 17px; margin-bottom: 1px;
+}
+
+/* ─── QUIZ ───────────────────────────────────────────────────── */
+#screen-quiz { padding-top: 28px; }
+
+.q-progress-row {
+  display: flex; align-items: center;
+  gap: 12px; margin-bottom: 10px;
+}
+.q-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--mut); flex-shrink: 0; }
+.progress-bar {
+  flex: 1; height: 3px; background: var(--bg3);
+  border-radius: 10px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--cy);
+  border-radius: 10px;
+  box-shadow: 0 0 8px var(--cy);
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.q-count {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; font-weight: 700; color: var(--mut);
+  flex-shrink: 0;
+}
+.q-count .hi { color: var(--cy); }
+
+.q-num {
+  font-size: 9px; letter-spacing: 2.5px;
+  color: var(--cy); text-transform: uppercase;
+  margin: 22px 0 12px;
+}
+.q-text {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(17px, 4.8vw, 21px);
+  font-weight: 700; line-height: 1.35;
+  margin-bottom: 26px; min-height: 56px;
+}
+.cursor {
+  display: inline-block;
+  width: 2px; height: .9em;
+  background: var(--cy);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink .65s step-end infinite;
+}
+@keyframes blink { 50% { opacity:0; } }
+
+.options { display: flex; flex-direction: column; gap: 9px; }
+
+.option {
+  background: var(--bg2);
+  border: 1.5px solid var(--bdr);
+  border-radius: 14px;
+  padding: 15px 16px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 13px;
+  text-align: left;
+  position: relative; overflow: hidden;
+  opacity: 0; transform: translateX(20px);
+  transition: border-color .22s, background .22s, box-shadow .22s;
+  -webkit-appearance: none;
+}
+.option.in {
+  animation: optIn .32s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes optIn {
+  from { opacity:0; transform:translateX(20px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+.option.sel {
+  border-color: var(--cy);
+  background: rgba(0,212,255,.06);
+  box-shadow: 0 0 0 1px rgba(0,212,255,.18), inset 0 0 20px rgba(0,212,255,.04);
+}
+
+/* Ripple */
+.rpl {
+  position: absolute; border-radius: 50%;
+  background: rgba(0,212,255,.2);
+  transform: scale(0);
+  animation: rplAnim .55s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes rplAnim {
+  to { transform: scale(5); opacity: 0; }
+}
+
+/* Letter badge */
+.opt-ltr {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--bg3); border: 1px solid var(--bdr);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 10px; font-weight: 700; color: var(--mut);
+  flex-shrink: 0;
+  transition: background .22s, color .22s, border-color .22s;
+  position: relative; overflow: hidden;
+}
+.option.sel .opt-ltr {
+  background: var(--cy); color: var(--bg); border-color: var(--cy);
+}
+/* SVG check inside letter */
+.ck {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.ck-path {
+  stroke: var(--bg); stroke-width: 2.5;
+  stroke-linecap: round; stroke-linejoin: round;
+  fill: none;
+  stroke-dasharray: 18; stroke-dashoffset: 18;
+  transition: stroke-dashoffset .28s ease .04s;
+}
+.option.sel .ck-path { stroke-dashoffset: 0; }
+
+.opt-txt { font-size: 13px; line-height: 1.45; color: var(--w); }
+
+.next-btn {
+  margin-top: 20px; width: 100%;
+  background: var(--cy); color: var(--bg);
+  border: none; border-radius: 14px; padding: 17px;
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,212,255,.18);
+  transition: opacity .3s, transform .1s;
+  opacity: 0; pointer-events: none;
+  -webkit-appearance: none;
+}
+.next-btn.vis { opacity: 1; pointer-events: all; }
+.next-btn:active { transform: scale(.98); }
+
+/* ─── COUNTDOWN ──────────────────────────────────────────────── */
+#screen-countdown {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 40px;
+  text-align: center;
+}
+#screen-countdown.active { display: flex; }
+
+.cd-lbl {
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--mut);
+  margin-bottom: 44px;
+}
+.cd-wrap {
+  position: relative; width: 160px; height: 160px;
+  margin-bottom: 32px;
+}
+.cd-svg {
+  width: 160px; height: 160px;
+  transform: rotate(-90deg);
+}
+.cd-bg { fill: none; stroke: var(--bg3); stroke-width: 5; }
+.cd-arc {
+  fill: none; stroke: var(--cy); stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 440; /* 2π × 70 */
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 5px var(--cy));
+  transition: stroke-dashoffset .95s linear;
+}
+.cd-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 72px; font-weight: 800;
+  color: var(--cy);
+  text-shadow: 0 0 32px rgba(0,212,255,.4);
+}
+.cd-num.pop { animation: numPop .3s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes numPop {
+  from { transform: scale(1.5); opacity:0; }
+  to   { transform: scale(1);   opacity:1; }
+}
+.cd-sub { font-size: 13px; color: var(--mut); }
+
+/* ─── RESULT ─────────────────────────────────────────────────── */
+#screen-result { padding-top: 24px; }
+
+/* Scanner */
+#scan-overlay {
+  position: fixed; inset: 0; z-index: 90;
+  background: var(--bg);
+  pointer-events: none;
+}
+#scan-line {
+  position: absolute; left: 0; right: 0; height: 2px; top: 0;
+  background: linear-gradient(90deg, transparent 0%, var(--cy) 30%, var(--cy) 70%, transparent 100%);
+  box-shadow: 0 0 16px var(--cy), 0 0 32px rgba(0,212,255,.4);
+  transition: top 1.3s cubic-bezier(.4,0,.2,1);
+}
+
+/* Result elements — staggered fade-in after scanner */
+.r-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 14px; border-radius: 100px;
+  font-size: 9px; letter-spacing: 2.5px;
+  text-transform: uppercase; font-weight: 700;
+  border: 1px solid currentColor;
+  margin-bottom: 20px;
+  opacity: 0; animation: none;
+}
+.r-badge.show { animation: fadeUp .5s .1s both; }
+.bdot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; box-shadow: 0 0 6px currentColor;
+}
+
+.r-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 90px; font-weight: 800;
+  line-height: 1; margin-bottom: 4px;
+  opacity: 0;
+}
+.r-num.show { animation: fadeUp .5s .25s both; }
+
+.r-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 24px; font-weight: 700;
+  margin-bottom: 20px;
+  opacity: 0;
+}
+.r-name.show { animation: fadeUp .5s .38s both; }
+
+.score-wrap { opacity: 0; }
+.score-wrap.show { animation: fadeUp .5s .5s both; }
+.score-hd {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--mut); margin-bottom: 8px;
+}
+.score-bg { height: 5px; background: var(--bg3); border-radius: 10px; overflow: hidden; }
+.score-fill {
+  height: 100%; border-radius: 10px;
+  transition: width 1.1s cubic-bezier(.4,0,.2,1) .7s;
+  width: 0%;
+}
+
+.r-div {
+  height: 1px; background: var(--bdr); margin: 22px 0;
+  opacity: 0;
+}
+.r-div.show { animation: fadeUp .5s .6s both; }
+
+.r-lbl {
+  font-size: 9px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--mut);
+  margin-bottom: 9px; opacity: 0;
+}
+.r-lbl.show { animation: fadeUp .5s .68s both; }
+
+.r-diag {
+  font-size: 14px; line-height: 1.65;
+  color: rgba(255,255,255,.8); margin-bottom: 22px;
+  opacity: 0;
+}
+.r-diag.show { animation: fadeUp .5s .76s both; }
+
+.a-lbl {
+  font-size: 9px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--mut);
+  margin-bottom: 12px; opacity: 0;
+}
+.a-lbl.show { animation: fadeUp .5s .84s both; }
+
+.actions { display: flex; flex-direction: column; gap: 9px; margin-bottom: 28px; }
+
+.a-item {
+  background: var(--bg2);
+  border: 1px solid var(--bdr);
+  border-radius: 12px;
+  padding: 13px 15px;
+  font-size: 13px; line-height: 1.5;
+  display: flex; gap: 11px; align-items: flex-start;
+  opacity: 0;
+}
+.a-item:nth-child(1) { animation: none; }
+.a-item:nth-child(2) { animation: none; }
+.a-item:nth-child(3) { animation: none; }
+.a-item.show:nth-child(1) { animation: fadeUp .5s .92s both; }
+.a-item.show:nth-child(2) { animation: fadeUp .5s 1.00s both; }
+.a-item.show:nth-child(3) { animation: fadeUp .5s 1.08s both; }
+.a-n {
+  font-family: 'Syne', sans-serif;
+  font-size: 9px; font-weight: 700;
+  opacity: .4; flex-shrink: 0; padding-top: 2px;
+}
+
+.r-footer {
+  padding-top: 18px; border-top: 1px solid var(--bdr);
+  text-align: center;
+  font-size: 9px; color: var(--mut); letter-spacing: 1px;
+  margin-top: 4px;
+  opacity: 0;
+}
+.r-footer.show { animation: fadeUp .5s 1.18s both; }
+
+.retry-btn {
+  margin-top: 12px; width: 100%;
+  background: transparent;
+  border: 1.5px solid var(--bdr); border-radius: 12px; padding: 14px;
+  font-family: 'Syne', sans-serif;
+  font-size: 11px; font-weight: 700; color: var(--mut); letter-spacing: 1px;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+  -webkit-appearance: none;
+  opacity: 0;
+}
+.retry-btn.show { animation: fadeUp .5s 1.26s both; }
+.retry-btn:active { border-color: var(--mut); color: var(--w); }
+</style>
+</head>
+<body>
+
+<!-- Neural canvas -->
+<canvas id="cnv"></canvas>
+
+<!-- Fixed structure: top bar + scrollable content -->
+<div id="app">
+
+  <!-- TOP BAR — brand + mute sempre visíveis -->
+  <div id="top-bar">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div class="brand-txt">Quiz · IA no Trabalho</div>
+    </div>
+    <button id="mute-btn" onclick="toggleMute()" aria-label="Mute">🔊</button>
+  </div>
+
+  <!-- SCROLLABLE CONTENT -->
+  <div id="content">
+
+    <!-- ══ WELCOME ══════════════════════════════════════════════ -->
+    <div class="screen active" id="screen-welcome">
+      <h1 class="welcome-h">
+        Qual é o seu<br><span class="cy">nível com IA?</span>
+      </h1>
+      <p class="welcome-sub">
+        8 perguntas sobre comportamento real — não sobre conhecimento técnico. Descubra onde você está e o que fazer pra subir um nível.
+      </p>
+      <label class="input-lbl" for="nameInput">Seu nome</label>
+      <input class="name-input" id="nameInput" type="text"
+        placeholder="Como posso te chamar?" autocomplete="off" autocorrect="off">
+      <button class="start-btn" id="startBtn" onclick="startQuiz()" disabled>
+        COMEÇAR →
+      </button>
+      <div class="pills">
+        <div class="pill"><strong>8</strong>perguntas</div>
+        <div class="pill"><strong>~2 min</strong>duração</div>
+        <div class="pill"><strong>4</strong>níveis</div>
+      </div>
+    </div>
+
+    <!-- ══ QUIZ ══════════════════════════════════════════════════ -->
+    <div class="screen" id="screen-quiz">
+      <div class="q-progress-row">
+        <span class="q-lbl">Progresso</span>
+        <div class="progress-bar">
+          <div class="progress-fill" id="pFill" style="width:12.5%"></div>
+        </div>
+        <span class="q-count"><span class="hi" id="curQ">1</span>/8</span>
+      </div>
+      <div class="q-num" id="qNum">Pergunta 01</div>
+      <div class="q-text" id="qText"></div>
+      <div class="options" id="opts"></div>
+      <button class="next-btn" id="nextBtn" onclick="nextQ()">PRÓXIMA →</button>
+    </div>
+
+    <!-- ══ COUNTDOWN ════════════════════════════════════════════ -->
+    <div class="screen" id="screen-countdown">
+      <div class="cd-lbl">Calculando seu nível...</div>
+      <div class="cd-wrap">
+        <svg class="cd-svg" viewBox="0 0 160 160">
+          <circle class="cd-bg" cx="80" cy="80" r="70"/>
+          <circle class="cd-arc" id="cdArc" cx="80" cy="80" r="70"/>
+        </svg>
+        <div class="cd-num" id="cdNum">3</div>
+      </div>
+      <div class="cd-sub">Prepare-se para o resultado</div>
+    </div>
+
+    <!-- ══ RESULT ════════════════════════════════════════════════ -->
+    <div class="screen" id="screen-result">
+      <!-- Scanner lives outside scroll so it covers full viewport -->
+      <div id="scan-overlay"><div id="scan-line"></div></div>
+
+      <div class="r-badge" id="rBadge"><div class="bdot"></div><span id="rBadgeTxt"></span></div>
+      <div class="r-num"  id="rNum"></div>
+      <div class="r-name" id="rName"></div>
+
+      <div class="score-wrap" id="scoreWrap">
+        <div class="score-hd">
+          <span id="scoreName"></span>
+          <span id="scoreVal"></span>
+        </div>
+        <div class="score-bg">
+          <div class="score-fill" id="scoreBar"></div>
+        </div>
+      </div>
+
+      <div class="r-div" id="rDiv"></div>
+      <div class="r-lbl" id="rLblDiag">Diagnóstico</div>
+      <div class="r-diag" id="rDiag"></div>
+      <div class="a-lbl"  id="rLblAct">3 ações para subir um nível</div>
+      <div class="actions" id="actions"></div>
+      <div class="r-footer" id="rFooter">Desenvolvido com IA · Supervisão Victor Emanuel</div>
+      <button class="retry-btn" id="retryBtn" onclick="resetQuiz()">↺ Refazer o quiz</button>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL ERROR SUPPRESSOR
+   Impede que erros de WebView (Audio, CORS etc.) apareçam
+═══════════════════════════════════════════════════════════════ */
+window.onerror = function() { return true; };
+window.addEventListener('unhandledrejection', function(e) { e.preventDefault(); });
+
+/* ═══════════════════════════════════════════════════════════════
+   NEURAL CANVAS
+═══════════════════════════════════════════════════════════════ */
+(function() {
+  try {
+    var canvas = document.getElementById('cnv');
+    var ctx    = canvas.getContext('2d');
+    var W, H, pts = [], raf;
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      pts = [];
+      var n = Math.min(55, Math.floor(W * H / 16000));
+      for (var i = 0; i < n; i++) {
+        pts.push({ x: Math.random()*W, y: Math.random()*H,
+                   vx: (Math.random()-.5)*.38, vy: (Math.random()-.5)*.38,
+                   r: Math.random()*1.4+.4 });
+      }
+    }
+
+    function draw() {
+      try {
+        ctx.clearRect(0,0,W,H);
+        for (var i=0; i<pts.length; i++) {
+          var p = pts[i];
+          p.x += p.vx; p.y += p.vy;
+          if (p.x<0||p.x>W) p.vx*=-1;
+          if (p.y<0||p.y>H) p.vy*=-1;
+          for (var j=i+1; j<pts.length; j++) {
+            var q=pts[j], dx=p.x-q.x, dy=p.y-q.y, d=Math.sqrt(dx*dx+dy*dy);
+            if (d<110) {
+              ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y);
+              ctx.strokeStyle='rgba(0,212,255,'+((.11*(1-d/110)).toFixed(3))+')';
+              ctx.lineWidth=.5; ctx.stroke();
+            }
+          }
+          ctx.beginPath();
+          ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+          ctx.fillStyle='rgba(0,212,255,.3)'; ctx.fill();
+        }
+        raf = requestAnimationFrame(draw);
+      } catch(e) {}
+    }
+
+    resize();
+    window.addEventListener('resize', function() { try { resize(); } catch(e) {} });
+    draw();
+  } catch(e) {}
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   AUDIO ENGINE — completamente isolado, nunca quebra o app
+═══════════════════════════════════════════════════════════════ */
+var _ac = null, _muted = false;
+
+function _getAC() {
+  if (_ac) return _ac;
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) { _ac = new AC(); }
+  } catch(e) {}
+  return _ac;
+}
+
+function _tone(freq, type, dur, vol) {
+  if (_muted) return;
+  try {
+    var ac = _getAC(); if (!ac) return;
+    if (ac.state === 'suspended') ac.resume();
+    var osc = ac.createOscillator(), g = ac.createGain();
+    osc.connect(g); g.connect(ac.destination);
+    osc.type = type||'sine';
+    osc.frequency.setValueAtTime(freq, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq*.82, ac.currentTime+dur);
+    g.gain.setValueAtTime(vol||.05, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+dur);
+    osc.start(); osc.stop(ac.currentTime+dur);
+  } catch(e) {}
+}
+
+function sfxSelect()   { _tone(900,'sine',.1,.04); }
+function sfxNext()     { _tone(660,'sine',.09,.04); }
+function sfxTick()     { _tone(440,'triangle',.14,.06); }
+function sfxReveal()   {
+  _tone(440,'sine',.12,.05);
+  setTimeout(function(){ _tone(550,'sine',.12,.05); },150);
+  setTimeout(function(){ _tone(660,'sine',.22,.07); },300);
+}
+
+function toggleMute() {
+  _muted = !_muted;
+  var b = document.getElementById('mute-btn');
+  b.textContent = _muted ? '🔇' : '🔊';
+  b.classList.toggle('muted', _muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════════════ */
+var questions = [
+  { text:"Quando você tem uma tarefa de criação de conteúdo — legenda, texto, apresentação — o que você faz primeiro?",
+    opts:[ {t:"Faço tudo manualmente, como sempre fiz.",s:0},
+           {t:"Às vezes abro o ChatGPT pra ter um rascunho inicial.",s:1},
+           {t:"Tenho prompts prontos salvos pra diferentes tipos de tarefa.",s:2},
+           {t:"Uso IA em várias etapas do processo com método definido.",s:3} ] },
+  { text:"Quantas vezes por semana você usa alguma ferramenta de IA no trabalho?",
+    opts:[ {t:"Nunca ou quase nunca.",s:0},
+           {t:"1 ou 2 vezes, quando lembro.",s:1},
+           {t:"Quase todo dia, de forma sistemática.",s:2},
+           {t:"Todo dia — está integrada ao meu fluxo de trabalho.",s:3} ] },
+  { text:"Quando a IA entrega um resultado, o que você faz com ele?",
+    opts:[ {t:"Não uso IA.",s:0},
+           {t:"Uso quase como veio, com pequenas edições.",s:1},
+           {t:"Avalio criticamente e reescrevo as partes importantes.",s:2},
+           {t:"Uso como rascunho e aplico meu julgamento pro resultado final.",s:3} ] },
+  { text:"Você já criou algum prompt específico salvo pra usar repetidamente?",
+    opts:[ {t:"Não sei muito bem o que é um prompt.",s:0},
+           {t:"Sei o que é, mas improviso na hora sempre.",s:1},
+           {t:"Tenho alguns salvos que uso regularmente.",s:2},
+           {t:"Tenho uma biblioteca organizada por tipo de tarefa.",s:3} ] },
+  { text:"Como você descreveria sua relação atual com ferramentas de IA?",
+    opts:[ {t:"Evito. Prefiro fazer do meu jeito.",s:0},
+           {t:"Experimento quando alguém indica uma ferramenta nova.",s:1},
+           {t:"Já faz parte do meu fluxo de trabalho regular.",s:2},
+           {t:"Penso em como a IA pode ajudar antes de começar qualquer tarefa.",s:3} ] },
+  { text:"Se você precisasse entregar um projeto em metade do tempo normal, você...",
+    opts:[ {t:"Trabalharia mais horas ou pediria prazo maior.",s:0},
+           {t:"Usaria IA em algumas partes e faria o resto manualmente.",s:1},
+           {t:"Teria um plano claro de quais etapas delegar pra IA.",s:2},
+           {t:"Já tenho fluxos com IA que me permitem trabalhar nessa velocidade.",s:3} ] },
+  { text:"Você já usou IA pra algo além de texto? (imagem, dados, automação, apresentação...)",
+    opts:[ {t:"Não.",s:0},
+           {t:"Já tentei uma ou duas vezes, sem aprofundar.",s:1},
+           {t:"Uso algumas dessas ferramentas regularmente.",s:2},
+           {t:"Combino ferramentas diferentes de forma integrada.",s:3} ] },
+  { text:"Quando você pensa em IA no seu trabalho, sua primeira reação é...",
+    opts:[ {t:"Preocupação ou ceticismo — acho que é hype.",s:0},
+           {t:"Curiosidade, mas sem urgência de mudar nada.",s:1},
+           {t:"Oportunidade — já estou aproveitando.",s:2},
+           {t:"Vantagem competitiva — já estou na frente.",s:3} ] }
+];
+
+var levels = [
+  { num:"0", name:"IGNORA", badge:"Nível 0", color:"#FF4455",
+    diag:"Você está observando de longe enquanto o mercado se move. Isso não é julgamento — é diagnóstico. Perceber o ponto de partida já é o primeiro passo real.",
+    actions:["Abra uma conta no ChatGPT hoje e use-o pra uma tarefa real ainda esta semana — qualquer uma.",
+             "Identifique uma tarefa repetitiva do seu dia e teste se a IA consegue fazer um rascunho útil.",
+             "Passe 20 minutos vendo como alguém do seu setor usa IA no trabalho — YouTube ou LinkedIn."] },
+  { num:"1", name:"USUÁRIO CASUAL", badge:"Nível 1", color:"#FFD166",
+    diag:"Você já entendeu que a IA existe e já testou. O problema é que está usando como calculadora — só quando precisa, sem método. Isso limita o ganho real.",
+    actions:["Crie e salve 3 prompts padrão para as tarefas que você repete toda semana.",
+             "Reserve um tempo fixo semanal (mesmo que 20 min) para explorar uma funcionalidade nova.",
+             "Documente o que a IA fez bem e o que precisou de ajuste — isso vira aprendizado acumulado."] },
+  { num:"2", name:"OPERADOR", badge:"Nível 2", color:"#00E5A0",
+    diag:"Você está usando bem — melhor do que a maioria. Mas 'usar bem' vai ser o básico nos próximos 12 meses. O diferencial está um nível acima: usar pra pensar, não só pra executar.",
+    actions:["Mapeie quais decisões do seu trabalho não podem ser delegadas — e proteja essas habilidades.",
+             "Use IA para pensar estratégia, não só executar tarefas — peça análises, cenários, contrapontos.",
+             "Combine ferramentas diferentes para criar um fluxo que seja seu — difícil de replicar."] },
+  { num:"3", name:"ESTRATEGISTA", badge:"Nível 3", color:"#00D4FF",
+    diag:"Você está onde poucos estão. Agora o trabalho é não parar — o mercado vai chegar onde você está mais rápido do que parece. Quem lidera precisa continuar se movendo.",
+    actions:["Documente seus fluxos e ensine alguém do time — quem ensina domina melhor e cria aliados.",
+             "Use IA para amplificar julgamento em decisões complexas, não só em tarefas operacionais.",
+             "Fique atento às ferramentas novas do seu setor — quem experimenta primeiro, lidera."] }
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+var userName='', curQ=0, selScore=null, answers=[];
+
+/* ═══════════════════════════════════════════════════════════════
+   WELCOME
+═══════════════════════════════════════════════════════════════ */
+var nameEl  = document.getElementById('nameInput');
+var startEl = document.getElementById('startBtn');
+
+nameEl.addEventListener('input', function() {
+  startEl.disabled = nameEl.value.trim().length < 2;
+});
+nameEl.addEventListener('keydown', function(e) {
+  if (e.key==='Enter' && !startEl.disabled) startQuiz();
+});
+
+function startQuiz() {
+  userName = nameEl.value.trim();
+  curQ=0; answers=[];
+  showScreen('screen-quiz');
+  renderQ();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   QUIZ
+═══════════════════════════════════════════════════════════════ */
+function renderQ() {
+  var q = questions[curQ];
+  selScore = null;
+  var letters = ['A','B','C','D'];
+
+  document.getElementById('curQ').textContent   = curQ+1;
+  document.getElementById('qNum').textContent   = 'Pergunta '+pad(curQ+1);
+  document.getElementById('pFill').style.width  = ((curQ+1)/8*100)+'%';
+
+  var nb = document.getElementById('nextBtn');
+  nb.classList.remove('vis');
+
+  // Typewriter
+  typeWriter(document.getElementById('qText'), q.text, 22);
+
+  // Options in cascade
+  var container = document.getElementById('opts');
+  container.innerHTML = '';
+  q.opts.forEach(function(opt, i) {
+    var btn = document.createElement('button');
+    btn.className = 'option in';
+    btn.style.animationDelay = (160 + i*75)+'ms';
+    btn.innerHTML =
+      '<div class="opt-ltr">'
+      +'<span class="ltr-t">'+letters[i]+'</span>'
+      +'<svg class="ck" viewBox="0 0 24 24"><path class="ck-path" d="M5 12l4 4L19 7"/></svg>'
+      +'</div>'
+      +'<div class="opt-txt">'+opt.t+'</div>';
+    btn.addEventListener('click', function(e){ selectOpt(i, opt.s, btn, e); });
+    container.appendChild(btn);
+  });
+}
+
+function typeWriter(el, text, speed) {
+  el.innerHTML = '';
+  var i = 0;
+  var cur = document.createElement('span');
+  cur.className = 'cursor';
+  el.appendChild(cur);
+  var iv = setInterval(function() {
+    if (i < text.length) {
+      el.insertBefore(document.createTextNode(text[i]), cur);
+      i++;
+    } else {
+      clearInterval(iv);
+      try { cur.remove(); } catch(e) { if(cur.parentNode) cur.parentNode.removeChild(cur); }
+    }
+  }, speed);
+}
+
+function selectOpt(idx, score, btn, e) {
+  sfxSelect();
+  // Ripple
+  try {
+    var rect = btn.getBoundingClientRect();
+    var sz   = Math.max(rect.width, rect.height)*2;
+    var cx   = e ? e.clientX - rect.left : rect.width/2;
+    var cy2  = e ? e.clientY - rect.top  : rect.height/2;
+    var rpl  = document.createElement('span');
+    rpl.className = 'rpl';
+    rpl.style.cssText = 'width:'+sz+'px;height:'+sz+'px;left:'+(cx-sz/2)+'px;top:'+(cy2-sz/2)+'px';
+    btn.appendChild(rpl);
+    setTimeout(function(){ try{ rpl.remove(); }catch(ex){} }, 600);
+  } catch(ex) {}
+
+  document.querySelectorAll('.option').forEach(function(o){ o.classList.remove('sel'); });
+  btn.classList.add('sel');
+  selScore = score;
+
+  var nb = document.getElementById('nextBtn');
+  nb.textContent = curQ===questions.length-1 ? 'VER MEU RESULTADO →' : 'PRÓXIMA →';
+  nb.classList.add('vis');
+}
+
+function nextQ() {
+  if (selScore===null) return;
+  sfxNext();
+  answers.push(selScore);
+  if (curQ < questions.length-1) {
+    curQ++;
+    renderQ();
+  } else {
+    startCountdown();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COUNTDOWN
+═══════════════════════════════════════════════════════════════ */
+function startCountdown() {
+  showScreen('screen-countdown');
+  var count  = 3;
+  var numEl  = document.getElementById('cdNum');
+  var arcEl  = document.getElementById('cdArc');
+  var CIRC   = 440; // 2π×70
+
+  function tick() {
+    numEl.textContent = count;
+    numEl.classList.remove('pop');
+    void numEl.offsetWidth; // force reflow
+    numEl.classList.add('pop');
+    sfxTick();
+    arcEl.style.strokeDashoffset = String(CIRC * (count/3));
+    // Animate arc to 0 immediately after set
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        arcEl.style.strokeDashoffset = '0';
+      });
+    });
+  }
+
+  tick();
+  var iv = setInterval(function() {
+    count--;
+    if (count > 0) {
+      tick();
+    } else {
+      clearInterval(iv);
+      setTimeout(buildResult, 380);
+    }
+  }, 1000);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESULT
+═══════════════════════════════════════════════════════════════ */
+function buildResult() {
+  var total = answers.reduce(function(a,b){ return a+b; }, 0);
+  var max   = questions.length * 3; // 24
+  var pct   = Math.round(total/max*100);
+  var li    = total<=6 ? 0 : total<=12 ? 1 : total<=18 ? 2 : 3;
+  var lv    = levels[li];
+  var c     = lv.color;
+
+  // Populate DOM
+  var badge = document.getElementById('rBadge');
+  badge.style.color = c;
+  document.getElementById('rBadgeTxt').textContent = lv.badge;
+
+  var rnum = document.getElementById('rNum');
+  rnum.textContent = lv.num;
+  rnum.style.color = c;
+  rnum.style.textShadow = '0 0 50px '+c+'55';
+
+  var rname = document.getElementById('rName');
+  rname.textContent = lv.name;
+  rname.style.color = c;
+
+  document.getElementById('scoreName').textContent = userName+', sua pontuação';
+  document.getElementById('scoreVal').textContent  = total+'/'+max+' pts';
+  var sb = document.getElementById('scoreBar');
+  sb.style.background  = c;
+  sb.style.boxShadow   = '0 0 10px '+c+'88';
+
+  document.getElementById('rDiag').textContent = lv.diag;
+
+  var al = document.getElementById('actions');
+  al.innerHTML = lv.actions.map(function(a,i){
+    return '<div class="a-item" style="color:'+c+';border-left-color:'+c+'">'
+      +'<span class="a-n">'+pad(i+1)+'</span>'
+      +'<span style="color:rgba(255,255,255,.85)">'+a+'</span></div>';
+  }).join('');
+
+  // Show screen (scanner will fire after)
+  showScreen('screen-result');
+  runScanner(pct, c);
+}
+
+function runScanner(pct, c) {
+  var overlay = document.getElementById('scan-overlay');
+  var line    = document.getElementById('scan-line');
+
+  overlay.style.display   = 'block';
+  overlay.style.opacity   = '1';
+  overlay.style.transition= '';
+  line.style.transition   = '';
+  line.style.top          = '-3px';
+
+  // Trigger scan in next frame
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      line.style.transition = 'top 1.3s cubic-bezier(.4,0,.2,1)';
+      line.style.top        = '105%';
+
+      setTimeout(function(){
+        overlay.style.transition = 'opacity .4s';
+        overlay.style.opacity    = '0';
+        setTimeout(function(){
+          overlay.style.display = 'none';
+          // Trigger score bar
+          setTimeout(function(){
+            document.getElementById('scoreBar').style.width = pct+'%';
+          }, 80);
+          // Animate result elements in
+          var els = ['rBadge','rNum','rName','scoreWrap','rDiv',
+                     'rLblDiag','rDiag','rLblAct','rFooter','retryBtn'];
+          els.forEach(function(id){ document.getElementById(id).classList.add('show'); });
+          document.querySelectorAll('.a-item').forEach(function(el){ el.classList.add('show'); });
+          sfxReveal();
+        }, 420);
+      }, 1400);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESET
+═══════════════════════════════════════════════════════════════ */
+function resetQuiz() {
+  curQ=0; answers=[]; selScore=null;
+  nameEl.value='';
+  startEl.disabled=true;
+
+  // Clean result show classes
+  var els = ['rBadge','rNum','rName','scoreWrap','rDiv',
+             'rLblDiag','rDiag','rLblAct','rFooter','retryBtn'];
+  els.forEach(function(id){ document.getElementById(id).classList.remove('show'); });
+  document.querySelectorAll('.a-item').forEach(function(el){ el.classList.remove('show'); });
+  document.getElementById('scoreBar').style.width='0%';
+
+  // Reset scanner
+  var overlay = document.getElementById('scan-overlay');
+  overlay.style.transition=''; overlay.style.opacity='1'; overlay.style.display='none';
+
+  showScreen('screen-welcome');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){
+    s.classList.remove('active');
+  });
+  var el = document.getElementById(id);
+  if (!el) return;
+  void el.offsetWidth; // force reflow for animation restart
+  el.classList.add('active');
+  // Scroll content back to top
+  var content = document.getElementById('content');
+  if (content) content.scrollTop = 0;
+}
+
+function pad(n) { return n < 10 ? '0'+n : ''+n; }
+</script>
+</body>
+</html>
